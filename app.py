@@ -344,9 +344,9 @@ CONTROL_PATTERNS: Dict[str, str] = {
 def risk_level(score: int) -> str:
     if score <= 24:
         return "Rendah"
-    if score <= 49:
+    if score <= 59:
         return "Sederhana"
-    if score <= 74:
+    if score <= 79:
         return "Tinggi"
     return "Sangat Tinggi"
 
@@ -406,6 +406,13 @@ def analyse_emotions(message: str):
 
     emotion_names = [item["name"] for item in detected]
     control_score, control_labels = find_control_matches(text)
+    has_risky_action = bool(
+        re.search(
+            r"otp|kata laluan|password|pin|klik pautan|tekan pautan|buka pautan|pautan|bayar|caj proses|caj pengesahan|deposit|transfer|pindahan",
+            text,
+            flags=re.I,
+        )
+    )
 
     # Kenaikan risiko apabila beberapa emosi digunakan serentak.
     if "Ketakutan" in emotion_names and "Kecemasan" in emotion_names:
@@ -416,6 +423,11 @@ def analyse_emotions(message: str):
         total_score += 12
 
     total_score = max(0, min(100, total_score - control_score))
+
+    # Peraturan kritikal ScamEmotion:
+    # Ketakutan + kecemasan + arahan berisiko menunjukkan manipulasi emosi tahap sangat tinggi.
+    if "Ketakutan" in emotion_names and "Kecemasan" in emotion_names and has_risky_action:
+        total_score = max(total_score, 85)
 
     if detected:
         dominant = max(detected, key=lambda item: item["score"])
